@@ -6,7 +6,8 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"ignoreUnknown": false
+		"ignoreUnknown": false,
+		"includes": ["**", "!src/app/templates"]
 	},
 	"formatter": {
 		"enabled": true,
@@ -16,7 +17,8 @@
 		"enabled": true,
 		"rules": {
 			"preset": "recommended"
-		}
+		},
+		"includes": ["**", "!src/app/templates"]
 	},
 	"javascript": {
 		"formatter": {

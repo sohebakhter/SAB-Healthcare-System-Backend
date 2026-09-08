@@ -1,3 +1,4 @@
+/** biome-ignore-all assist/source/organizeImports: <explanation> */
 import type { Request, Response } from "express";
 import httpStatus from "http-status";
 import { catchAsync } from "../../utils/catchAsync";
@@ -7,6 +8,7 @@ import { AuthService } from "./auth.service";
 
 const registerPatient = catchAsync(async (req: Request, res: Response) => {
 	const payload = req.body;
+
 	const result = await AuthService.registerPatient(payload);
 
 	const { accessToken, refreshToken, user, patient } = result;
@@ -142,6 +144,28 @@ const googleLogin = catchAsync(async (req: Request, res: Response) => {
 		},
 	});
 });
+const forgotPassword = catchAsync(async (req: Request, res: Response) => {
+	const payload = req.body;
+	await AuthService.forgotPassword(payload);
+
+	sendResponse(res, {
+		success: true,
+		statusCode: httpStatus.OK,
+		message: `OTP sent successfully for : ${payload.email}`,
+		data: null,
+	});
+});
+const resetPassword = catchAsync(async (req: Request, res: Response) => {
+	const payload = req.body;
+	await AuthService.resetPassword(payload);
+
+	sendResponse(res, {
+		success: true,
+		statusCode: httpStatus.OK,
+		message: "Password Changed successfully",
+		data: null,
+	});
+});
 
 export const AuthController = {
 	registerPatient,
@@ -149,4 +173,6 @@ export const AuthController = {
 	getMe,
 	refreshToken,
 	googleLogin,
+	forgotPassword,
+	resetPassword,
 };
