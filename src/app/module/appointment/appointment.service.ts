@@ -5,7 +5,7 @@ import {
 import config from "../../config";
 import { getBkashIdToken } from "../../lib/bkash";
 import { prisma } from "../../lib/prisma";
-import { RequestUser } from "../../middleware/checkAuth";
+import type { RequestUser } from "../../middleware/checkAuth";
 
 const bookAppointment = async (payload: any, user: RequestUser) => {
 	const transactionResult = await prisma.$transaction(async (tx) => {

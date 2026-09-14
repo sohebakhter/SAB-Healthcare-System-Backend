@@ -1,7 +1,7 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, {
-	NextFunction,
+	type NextFunction,
 	type Application,
 	type Request,
 	type Response,
@@ -15,6 +15,7 @@ import crypto from "crypto";
 import { UserRoutes } from "./app/module/user/user.route";
 import { getBkashIdToken } from "./app/lib/bkash";
 import { AppointmentRoutes } from "./app/module/appointment/appointment.route";
+import { doctorRoutes } from "./app/module/doctor/doctor.route";
 
 const app: Application = express();
 
@@ -35,6 +36,7 @@ app.use(cookieParser());
 app.use("/api/v1/auth", AuthRoutes);
 app.use("/api/v1/user", UserRoutes);
 app.use("/api/v1/appointment", AppointmentRoutes);
+app.use("/api/v1/doctor", doctorRoutes);
 
 app.get("/test", async (req: Request, res: Response, next: NextFunction) => {
 	try {
