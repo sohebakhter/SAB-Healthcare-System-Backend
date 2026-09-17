@@ -26,6 +26,8 @@ import { redisClient } from "../../lib/redis";
 import { transporter } from "../../lib/nodemailer";
 import path from "path";
 import ejs from "ejs";
+import httpStatus from "http-status";
+import { AppError } from "../../utils/appError";
 
 const registerPatient = async (payload: IRegisterPatientPayload) => {
 	const { name, password, patient: patientData } = payload;
@@ -37,7 +39,7 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
 	});
 
 	if (isUserExists) {
-		throw new Error("User with this email already exists");
+			 throw new AppError(httpStatus.CONFLICT, "User with this email already exists");
 	}
 
 	const hashedPassword = await bcrypt.hash(
@@ -102,31 +104,31 @@ const verifyPatientEmail = async (payload: IVerifyEmailPayload) => {
 		},
 	});
 	if (isUserExits?.status === "BLOCKED") {
-		throw new Error("User is Blocked");
+			throw new AppError(httpStatus.FORBIDDEN, "User is Blocked");
 	}
 	if (isUserExits?.emailVerified) {
-		throw new Error("User is Already Verified, Please Login");
+			throw new AppError(httpStatus.CONFLICT, "User is Already Verified, Please Login");
 	}
 	if (isUserExits?.status === "DELETED" || isUserExits?.isDeleted) {
-		throw new Error("User is Deleted!");
+			throw new AppError(httpStatus.FORBIDDEN, "User is Deleted!");
 	}
 
 	const otpKey = `patient-registration-otp:${email}`;
 	const redisOtp = await redisClient.get(otpKey);
 
 	if (!otp) {
-		throw new Error("Invalid OTP ");
+			throw new AppError(httpStatus.BAD_REQUEST, "Invalid OTP ");
 	}
 
 	if (redisOtp !== otp) {
-		throw new Error("OTP Dosen't Matched!");
+			throw new AppError(httpStatus.BAD_REQUEST, "OTP Dosen't Matched!");
 	}
 	await redisClient.del(otpKey);
 
 	const patientRegistrationKey = `patient-registration-data:${email}`;
 	const redisPatientData = await redisClient.get(patientRegistrationKey);
 	if (!redisPatientData) {
-		throw new Error("Patient Doesn't Exist");
+			throw new AppError(httpStatus.NOT_FOUND, "Patient Doesn't Exist");
 	}
 	const patientPayload: IRegisterPatientPayload = JSON.parse(redisPatientData);
 
@@ -205,19 +207,20 @@ const loginUser = async (payload: ILoginUserPayload) => {
 	});
 
 	if (!user) {
-		throw new Error("User not found");
+				// throw new AppError(httpStatus.NOT_FOUND, "User not found");
+		throw new AppError(httpStatus.NOT_FOUND, "User not found");
 	}
 
 	if (user.status === UserStatus.BLOCKED) {
-		throw new Error("User is blocked");
+			throw new AppError(httpStatus.FORBIDDEN, "User is blocked");
 	}
 
 	if (user.isDeleted || user.status === UserStatus.DELETED) {
-		throw new Error("User is deleted");
+			throw new AppError(httpStatus.FORBIDDEN, "User is deleted");
 	}
 
 	if (user.password === null && user.googleId !== null) {
-		throw new Error(
+			throw new AppError(httpStatus.UNAUTHORIZED,
 			"User Already Has Google Account, Please Login With Google Account",
 		);
 	}
@@ -228,7 +231,7 @@ const loginUser = async (payload: ILoginUserPayload) => {
 	);
 
 	if (!isPasswordMatched) {
-		throw new Error("Invalid credentials");
+			throw new AppError(httpStatus.UNAUTHORIZED, "Invalid credentials");
 	}
 
 	const jwtPayload = {
@@ -270,7 +273,7 @@ const getMe = async (user: IRequestUser) => {
 	});
 
 	if (!isUserExists) {
-		throw new Error("User not found");
+			throw new AppError(httpStatus.NOT_FOUND, "User not found");
 	}
 
 	return isUserExists;
@@ -283,7 +286,7 @@ const refreshToken = async (token: string) => {
 	);
 
 	if (!verifiedRefreshToken.success || !verifiedRefreshToken.data) {
-		throw new Error(
+			throw new AppError(httpStatus.UNAUTHORIZED,
 			config.node_env === "development"
 				? verifiedRefreshToken.error
 				: "Invalid refresh token",
@@ -297,7 +300,7 @@ const refreshToken = async (token: string) => {
 	});
 
 	if (!user || user.isDeleted || user.status !== UserStatus.ACTIVE) {
-		throw new Error("User is inactive or not found");
+			throw new AppError(httpStatus.UNAUTHORIZED, "User is inactive or not found");
 	}
 
 	const jwtPayload = {
@@ -336,13 +339,13 @@ const googleLogin = async (payload: IGoogleLoginPayload) => {
 		googleIdTokenPayload = ticket.getPayload();
 	} catch (error) {
 		console.log("Google ID Token Verification Failed", error);
-		throw new Error("Invalid or Expired Google ID Token");
+			throw new AppError(httpStatus.UNAUTHORIZED, "Invalid or Expired Google ID Token");
 	}
 
 	if (!googleIdTokenPayload)
-		throw new Error("Invalid or Expired Google ID Token");
-	if (!googleIdTokenPayload.email) throw new Error("Google Email not found");
-	if (!googleIdTokenPayload.name) throw new Error("Google Name not found");
+			throw new AppError(httpStatus.UNAUTHORIZED, "Invalid or Expired Google ID Token");
+	if (!googleIdTokenPayload.email) throw new AppError(httpStatus.BAD_REQUEST, "Google Email not found");
+	if (!googleIdTokenPayload.name) throw new AppError(httpStatus.BAD_REQUEST, "Google Name not found");
 
 	const isUserExistsWithGoogleAuth = await prisma.user.findUnique({
 		where: {
@@ -365,17 +368,17 @@ const googleLogin = async (payload: IGoogleLoginPayload) => {
 
 		if (isPatientExistsWithCredentials) {
 			if (!isPatientExistsWithCredentials.emailVerified) {
-				throw new Error("Email not verified");
+							  throw new AppError(httpStatus.UNAUTHORIZED, "Email not verified");
 			}
 
 			if (isPatientExistsWithCredentials.status === UserStatus.BLOCKED) {
-				throw new Error("User is Blocked");
+							  throw new AppError(httpStatus.FORBIDDEN, "User is Blocked");
 			}
 			if (
 				isPatientExistsWithCredentials.isDeleted ||
 				isPatientExistsWithCredentials.status === UserStatus.DELETED
 			) {
-				throw new Error("User is deleted");
+							throw new AppError(httpStatus.FORBIDDEN, "User is deleted");
 			}
 
 			user = await prisma.user.update({
@@ -425,14 +428,14 @@ const googleLogin = async (payload: IGoogleLoginPayload) => {
 	}
 
 	if (!user) {
-		throw new Error("User not found");
+			throw new AppError(httpStatus.NOT_FOUND, "User not found");
 	}
 
 	if (user.status === UserStatus.BLOCKED) {
-		throw new Error("User is Blocked");
+			throw new AppError(httpStatus.FORBIDDEN, "User is Blocked");
 	}
 	if (user.isDeleted || user.status === UserStatus.DELETED) {
-		throw new Error("User is deleted");
+			throw new AppError(httpStatus.FORBIDDEN, "User is deleted");
 	}
 
 	const jwtPayload = {
@@ -470,21 +473,21 @@ const forgotPassword = async (payload: IForgotPassworddPayload) => {
 	});
 
 	if (!isUserExits) {
-		throw new Error("User Dosen't Exits ");
+			throw new AppError(httpStatus.NOT_FOUND, "User Dosen't Exits ");
 	}
 
 	if (isUserExits.status === "BLOCKED") {
-		throw new Error("User is Blocked");
+			throw new AppError(httpStatus.FORBIDDEN, "User is Blocked");
 	}
 	if (!isUserExits.emailVerified) {
-		throw new Error("User is unverified");
+			throw new AppError(httpStatus.UNAUTHORIZED, "User is unverified");
 	}
 
 	if (isUserExits.status === "DELETED" || isUserExits.isDeleted) {
-		throw new Error("User is Deleted!");
+			throw new AppError(httpStatus.FORBIDDEN, "User is Deleted!");
 	}
 	if (isUserExits.googleId && isUserExits.authProvider === "GOOGLE") {
-		throw new Error("User has account with Google");
+			throw new AppError(httpStatus.CONFLICT, "User has account with Google");
 	}
 
 	const otp = crypto.randomInt(100000, 1000000).toString();
@@ -525,31 +528,31 @@ const resetPassword = async (payload: IResetPassworddPayload) => {
 	});
 
 	if (!isUserExits) {
-		throw new Error("User Dosen't Exits ");
+			throw new AppError(httpStatus.NOT_FOUND, "User Dosen't Exits ");
 	}
 
 	if (isUserExits.status === "BLOCKED") {
-		throw new Error("User is Blocked");
+			throw new AppError(httpStatus.FORBIDDEN, "User is Blocked");
 	}
 	if (!isUserExits.emailVerified) {
-		throw new Error("User is unverified");
+			throw new AppError(httpStatus.UNAUTHORIZED, "User is unverified");
 	}
 
 	if (isUserExits.status === "DELETED" || isUserExits.isDeleted) {
-		throw new Error("User is Deleted!");
+			throw new AppError(httpStatus.FORBIDDEN, "User is Deleted!");
 	}
 	if (isUserExits.googleId && isUserExits.authProvider === "GOOGLE") {
-		throw new Error("User has account with Google");
+			throw new AppError(httpStatus.CONFLICT, "User has account with Google");
 	}
 
 	if (!otp) {
-		throw new Error("Invalid Otp");
+			throw new AppError(httpStatus.BAD_REQUEST, "Invalid Otp");
 	}
 	const key = `forgot-password-otp:${isUserExits.email}`;
 	const redisOtp = await redisClient.get(key);
 
 	if (redisOtp !== otp) {
-		throw new Error("Otp not matched!");
+			throw new AppError(httpStatus.BAD_REQUEST, "Otp not matched!");
 	}
 
 	const hashedNewPassword = await bcrypt.hash(

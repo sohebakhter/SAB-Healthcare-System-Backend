@@ -2,12 +2,13 @@ import type { Request, Response } from "express";
 import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import httpStatus from "http-status";
+import { AppError } from "../../utils/appError";
 import { UserServices } from "./user.service";
 
 const uploadProfileImage = catchAsync(async (req: Request, res: Response) => {
 	// console.log(req.file, "profile image");
 	if (!req.file) {
-		throw new Error("Profile Picture is not Uploaded");
+				throw new AppError(httpStatus.BAD_REQUEST, "Profile Picture is not Uploaded");
 	}
 	const userId = req.user?.userId;
 	const result = await UserServices.uploadProfileImage(
