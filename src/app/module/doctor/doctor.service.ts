@@ -11,7 +11,9 @@ import crypto from "crypto";
 import { transporter } from "../../lib/nodemailer";
 import path from "path";
 import ejs from "ejs";
+import httpStatus from "http-status";
 import { redisClient } from "../../lib/redis";
+import { AppError } from "../../utils/appError";
 import type {
 	IApplyAsDoctorPayload,
 	IApproveDoctorPayload,
@@ -33,7 +35,7 @@ const applyAsDoctor = async (
 	});
 
 	if (existingUser) {
-		throw new Error("User with this email already exists");
+				throw new AppError(httpStatus.CONFLICT, "User with this email already exists");
 	}
 
 	const resumeCloudinaryResult = await new Promise<UploadApiResponse>(
@@ -142,21 +144,21 @@ const verifyDoctorEmail = async (payload: IVerifyDoctorEmailPayload) => {
 	});
 
 	if (!isDoctorExists) {
-		throw new Error("Doctor with this email does not exist");
+		  throw new AppError(httpStatus.NOT_FOUND, "Doctor with this email does not exist");
 	}
 
 	if (!isDoctorExists.emailVerified) {
-		throw new Error("Doctor's email is not verified yet");
+		  throw new AppError(httpStatus.UNAUTHORIZED, "Doctor's email is not verified yet");
 	}
 
 	const otpKey = `doctor-application-otp:${email}`;
 	const storedOtp = await redisClient.get(otpKey);
 
 	if (!storedOtp) {
-		throw new Error("OTP has expired or is invalid");
+		  throw new AppError(httpStatus.BAD_REQUEST, "OTP has expired or is invalid");
 	}
 	if (storedOtp !== otp) {
-		throw new Error("Invalid OTP");
+		  throw new AppError(httpStatus.BAD_REQUEST, "Invalid OTP");
 	}
 	await redisClient.del(otpKey);
 
@@ -185,25 +187,25 @@ const approveDoctor = async (
 	});
 
 	if (!existingDoctor) {
-		throw new Error("Doctor not found");
+		  throw new AppError(httpStatus.NOT_FOUND, "Doctor not found");
 	}
 
 	if (existingDoctor.isDeleted) {
-		throw new Error(
+		  throw new AppError(httpStatus.FORBIDDEN,
 			"Doctor has been deleted and cannot be approved or rejected",
 		);
 	}
 
 	if (existingDoctor.verificationStatus === DoctorVerificationStatus.APPROVED) {
-		throw new Error("Doctor is already approved");
+		  throw new AppError(httpStatus.CONFLICT, "Doctor is already approved");
 	}
 
 	if (existingDoctor.user.emailVerified === false) {
-		throw new Error("Doctor's email is not verified yet");
+		  throw new AppError(httpStatus.UNAUTHORIZED, "Doctor's email is not verified yet");
 	}
 
 	if (existingDoctor.verificationStatus !== DoctorVerificationStatus.PENDING) {
-		throw new Error(
+		  throw new AppError(httpStatus.CONFLICT,
 			`Doctor is already ${existingDoctor.verificationStatus.toLowerCase()}`,
 		);
 	}
@@ -212,7 +214,7 @@ const approveDoctor = async (
 		verificationStatus === DoctorVerificationStatus.REJECTED &&
 		!rejectionReason
 	) {
-		throw new Error("Rejection reason is required when rejecting a doctor");
+		  throw new AppError(httpStatus.BAD_REQUEST, "Rejection reason is required when rejecting a doctor");
 	}
 
 	const updatedDoctor = await prisma.doctor.update({

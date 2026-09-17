@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import httpStatus from "http-status";
+import { AppError } from "../../utils/appError";
 import { doctorServices } from "./doctor.service";
 import { applyAsDoctorZodSchema } from "./doctor.validation";
 
@@ -16,7 +17,7 @@ const applyAsDoctor = catchAsync(async (req: Request, res: Response) => {
 
 	const zodValidationResult = applyAsDoctorZodSchema.safeParse(data);
 	if (!zodValidationResult.success) {
-		throw new Error(zodValidationResult.error.issues[0].message);
+				throw new AppError(httpStatus.BAD_REQUEST, zodValidationResult.error.issues[0].message);
 	}
 
 	const result = await doctorServices.applyAsDoctor(

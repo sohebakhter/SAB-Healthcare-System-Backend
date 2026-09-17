@@ -1,5 +1,7 @@
 import config from "../config";
+import httpStatus from "http-status";
 import { redisClient } from "./redis";
+import { AppError } from "../utils/appError";
 
 export const getBkashIdToken = async () => {
 	try {
@@ -89,6 +91,6 @@ export const getBkashIdToken = async () => {
 
 		return data.id_token;
 	} catch (error: any) {
-		throw new Error(error.message);
+			 throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, error.message);
 	}
 };
