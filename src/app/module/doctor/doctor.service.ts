@@ -17,11 +17,14 @@ import { AppError } from "../../utils/appError";
 import type {
 	IApplyAsDoctorPayload,
 	IApproveDoctorPayload,
+	IUpdateDoctorProfilePayload,
 	IVerifyDoctorEmailPayload,
 } from "./doctor.interface";
 import type { RequestUser } from "../../middleware/checkAuth";
 import type { IQuery } from "../../interfaces";
 import type { DoctorWhereInput } from "../../../../generated/prisma/models";
+import { addDays, startOfDay } from "date-fns";
+import { ScheduleStatus } from "../../../../generated/prisma/enums";
 
 const applyAsDoctor = async (
 	payload: IApplyAsDoctorPayload,
@@ -35,7 +38,7 @@ const applyAsDoctor = async (
 	});
 
 	if (existingUser) {
-				throw new AppError(httpStatus.CONFLICT, "User with this email already exists");
+		throw new AppError(httpStatus.CONFLICT, "User with this email already exists");
 	}
 
 	const resumeCloudinaryResult = await new Promise<UploadApiResponse>(
@@ -144,21 +147,21 @@ const verifyDoctorEmail = async (payload: IVerifyDoctorEmailPayload) => {
 	});
 
 	if (!isDoctorExists) {
-		  throw new AppError(httpStatus.NOT_FOUND, "Doctor with this email does not exist");
+		throw new AppError(httpStatus.NOT_FOUND, "Doctor with this email does not exist");
 	}
 
 	if (!isDoctorExists.emailVerified) {
-		  throw new AppError(httpStatus.UNAUTHORIZED, "Doctor's email is not verified yet");
+		throw new AppError(httpStatus.UNAUTHORIZED, "Doctor's email is not verified yet");
 	}
 
 	const otpKey = `doctor-application-otp:${email}`;
 	const storedOtp = await redisClient.get(otpKey);
 
 	if (!storedOtp) {
-		  throw new AppError(httpStatus.BAD_REQUEST, "OTP has expired or is invalid");
+		throw new AppError(httpStatus.BAD_REQUEST, "OTP has expired or is invalid");
 	}
 	if (storedOtp !== otp) {
-		  throw new AppError(httpStatus.BAD_REQUEST, "Invalid OTP");
+		throw new AppError(httpStatus.BAD_REQUEST, "Invalid OTP");
 	}
 	await redisClient.del(otpKey);
 
@@ -187,25 +190,25 @@ const approveDoctor = async (
 	});
 
 	if (!existingDoctor) {
-		  throw new AppError(httpStatus.NOT_FOUND, "Doctor not found");
+		throw new AppError(httpStatus.NOT_FOUND, "Doctor not found");
 	}
 
 	if (existingDoctor.isDeleted) {
-		  throw new AppError(httpStatus.FORBIDDEN,
+		throw new AppError(httpStatus.FORBIDDEN,
 			"Doctor has been deleted and cannot be approved or rejected",
 		);
 	}
 
 	if (existingDoctor.verificationStatus === DoctorVerificationStatus.APPROVED) {
-		  throw new AppError(httpStatus.CONFLICT, "Doctor is already approved");
+		throw new AppError(httpStatus.CONFLICT, "Doctor is already approved");
 	}
 
 	if (existingDoctor.user.emailVerified === false) {
-		  throw new AppError(httpStatus.UNAUTHORIZED, "Doctor's email is not verified yet");
+		throw new AppError(httpStatus.UNAUTHORIZED, "Doctor's email is not verified yet");
 	}
 
 	if (existingDoctor.verificationStatus !== DoctorVerificationStatus.PENDING) {
-		  throw new AppError(httpStatus.CONFLICT,
+		throw new AppError(httpStatus.CONFLICT,
 			`Doctor is already ${existingDoctor.verificationStatus.toLowerCase()}`,
 		);
 	}
@@ -214,7 +217,7 @@ const approveDoctor = async (
 		verificationStatus === DoctorVerificationStatus.REJECTED &&
 		!rejectionReason
 	) {
-		  throw new AppError(httpStatus.BAD_REQUEST, "Rejection reason is required when rejecting a doctor");
+		throw new AppError(httpStatus.BAD_REQUEST, "Rejection reason is required when rejecting a doctor");
 	}
 
 	const updatedDoctor = await prisma.doctor.update({
@@ -371,9 +374,197 @@ const getAllDoctors = async (query: IQuery) => {
 	};
 };
 
+const updateDoctorProfile = async (payload: IUpdateDoctorProfilePayload, user: RequestUser) => {
+	const existingDoctor = await prisma.doctor.findUnique({
+		where: { userId: user.userId },
+	});
+
+	if (!existingDoctor) {
+		throw new AppError(httpStatus.NOT_FOUND, "Doctor not found");
+	}
+
+	const updatedDoctor = await prisma.doctor.update({
+		where: {
+			id: existingDoctor.id
+		},
+		data: payload
+	})
+
+	return updatedDoctor
+}
+
+const getAvailableDoctorByTodaysSchedule = async (query: IQuery) => {
+	const limit = query.limit ? Number(query.limit) : 10;
+	const page = query.page ? Number(query.page) : 1;
+	const skip = (page - 1) * limit;
+	const sortBy = query.sortBy || "name";
+	const sortOrder = query.sortOrder || "asc";
+
+	const now = new Date();
+	const startOfToday = startOfDay(now);
+	const startOfTomorrow = addDays(startOfToday, 1);
+
+
+
+	const [doctors, total] = await Promise.all([
+		prisma.doctor.findMany({
+			where: {
+				isDeleted: false,
+				verificationStatus: DoctorVerificationStatus.APPROVED
+			},
+			select: {
+				id: true,
+				name: true,
+				address: true,
+				specialization: true,
+				qualifications: true,
+				experienceYears: true,
+				bio: true,
+				consultationFee: true,
+				contactNumber: true,
+				user: {
+					select: {
+						imageUrl: true,
+					},
+				},
+				schedules: {
+					where: {
+						isDeleted: false,
+						status: ScheduleStatus.PUBLISHED,
+						startDateTime: { gte: startOfToday, lt: startOfTomorrow, gt: now },
+						availableSlots: { gt: 0 },
+					},
+					orderBy: { startDateTime: "asc" },
+					select: {
+						id: true,
+						startDateTime: true,
+						endDateTime: true,
+						totalSlots: true,
+						availableSlots: true,
+						meetingLink: true,
+					},
+				},
+			},
+			take: limit,
+			skip,
+			orderBy: { [sortBy]: sortOrder },
+		}),
+		prisma.doctor.count({ where: { isDeleted: false, verificationStatus: DoctorVerificationStatus.APPROVED } }),
+	]);
+
+	return {
+		data: doctors,
+		meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+	};
+};
+
+const getAllDoctorsListPublic = async (query: IQuery) => {
+	const limit = query.limit ? Number(query.limit) : 10;
+	const page = query.page ? Number(query.page) : 1;
+	const skip = (page - 1) * limit;
+
+	const sortBy = query.sortBy || "createdAt"
+	const sortOrder = query.sortOrder || "desc"
+
+	const [doctors, total] = await Promise.all([
+		prisma.doctor.findMany({
+			where: { isDeleted: false, verificationStatus: DoctorVerificationStatus.APPROVED },
+			select: {
+				id: true,
+				name: true,
+				address: true,
+				specialization: true,
+				qualifications: true,
+				experienceYears: true,
+				bio: true,
+				consultationFee: true,
+				contactNumber: true,
+				user: {
+					select: {
+						imageUrl: true,
+					},
+				},
+			},
+			take: limit,
+			skip,
+			orderBy: {
+				[sortBy]: sortOrder
+			}
+		}),
+		prisma.doctor.count({
+			where: {
+				isDeleted: false,
+				verificationStatus: DoctorVerificationStatus.APPROVED
+			}
+		}),
+	]);
+
+	return {
+		data: doctors,
+		meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+	};
+};
+
+const getSingleDoctorPublicProfile = async (doctorId: string) => {
+	const now = new Date();
+	const startOfToday = startOfDay(now);
+	const startOfTomorrow = addDays(startOfToday, 1);
+
+	const doctor = await prisma.doctor.findFirst({
+		where: {
+			id: doctorId,
+			isDeleted: false,
+			verificationStatus: DoctorVerificationStatus.APPROVED,
+		},
+		select: {
+			id: true,
+			name: true,
+			address: true,
+			specialization: true,
+			qualifications: true,
+			experienceYears: true,
+			bio: true,
+			consultationFee: true,
+			contactNumber: true,
+			user: {
+				select: {
+					imageUrl: true,
+				},
+			},
+			schedules: {
+				where: {
+					isDeleted: false,
+					status: ScheduleStatus.PUBLISHED,
+					startDateTime: { gte: startOfToday, lt: startOfTomorrow, gt: now },
+					availableSlots: { gt: 0 },
+				},
+				orderBy: { startDateTime: "asc" },
+				select: {
+					id: true,
+					startDateTime: true,
+					endDateTime: true,
+					totalSlots: true,
+					availableSlots: true,
+					meetingLink: true,
+				},
+			},
+		},
+	});
+
+	if (!doctor) {
+		throw new AppError(httpStatus.NOT_FOUND, "Doctor profile not found");
+	}
+
+	return doctor;
+};
+
 export const doctorServices = {
 	applyAsDoctor,
 	verifyDoctorEmail,
 	approveDoctor,
 	getAllDoctors,
+	updateDoctorProfile,
+	getAvailableDoctorByTodaysSchedule,
+	getAllDoctorsListPublic,
+	getSingleDoctorPublicProfile,
 };
