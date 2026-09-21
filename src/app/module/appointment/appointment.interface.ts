@@ -8,5 +8,5 @@ export interface ICancelAppointmentPayload {
 	appointmentId: string;
 }
 export interface IUpdateAppointmentStatusPayload {
-	status: "ONGOING" | "COMPLETED"
+	status: "ONGOING" | "COMPLETED";
 }

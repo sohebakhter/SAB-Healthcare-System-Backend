@@ -38,7 +38,10 @@ const applyAsDoctor = async (
 	});
 
 	if (existingUser) {
-		throw new AppError(httpStatus.CONFLICT, "User with this email already exists");
+		throw new AppError(
+			httpStatus.CONFLICT,
+			"User with this email already exists",
+		);
 	}
 
 	const resumeCloudinaryResult = await new Promise<UploadApiResponse>(
@@ -147,11 +150,17 @@ const verifyDoctorEmail = async (payload: IVerifyDoctorEmailPayload) => {
 	});
 
 	if (!isDoctorExists) {
-		throw new AppError(httpStatus.NOT_FOUND, "Doctor with this email does not exist");
+		throw new AppError(
+			httpStatus.NOT_FOUND,
+			"Doctor with this email does not exist",
+		);
 	}
 
 	if (!isDoctorExists.emailVerified) {
-		throw new AppError(httpStatus.UNAUTHORIZED, "Doctor's email is not verified yet");
+		throw new AppError(
+			httpStatus.UNAUTHORIZED,
+			"Doctor's email is not verified yet",
+		);
 	}
 
 	const otpKey = `doctor-application-otp:${email}`;
@@ -194,7 +203,8 @@ const approveDoctor = async (
 	}
 
 	if (existingDoctor.isDeleted) {
-		throw new AppError(httpStatus.FORBIDDEN,
+		throw new AppError(
+			httpStatus.FORBIDDEN,
 			"Doctor has been deleted and cannot be approved or rejected",
 		);
 	}
@@ -204,11 +214,15 @@ const approveDoctor = async (
 	}
 
 	if (existingDoctor.user.emailVerified === false) {
-		throw new AppError(httpStatus.UNAUTHORIZED, "Doctor's email is not verified yet");
+		throw new AppError(
+			httpStatus.UNAUTHORIZED,
+			"Doctor's email is not verified yet",
+		);
 	}
 
 	if (existingDoctor.verificationStatus !== DoctorVerificationStatus.PENDING) {
-		throw new AppError(httpStatus.CONFLICT,
+		throw new AppError(
+			httpStatus.CONFLICT,
 			`Doctor is already ${existingDoctor.verificationStatus.toLowerCase()}`,
 		);
 	}
@@ -217,7 +231,10 @@ const approveDoctor = async (
 		verificationStatus === DoctorVerificationStatus.REJECTED &&
 		!rejectionReason
 	) {
-		throw new AppError(httpStatus.BAD_REQUEST, "Rejection reason is required when rejecting a doctor");
+		throw new AppError(
+			httpStatus.BAD_REQUEST,
+			"Rejection reason is required when rejecting a doctor",
+		);
 	}
 
 	const updatedDoctor = await prisma.doctor.update({
@@ -374,7 +391,10 @@ const getAllDoctors = async (query: IQuery) => {
 	};
 };
 
-const updateDoctorProfile = async (payload: IUpdateDoctorProfilePayload, user: RequestUser) => {
+const updateDoctorProfile = async (
+	payload: IUpdateDoctorProfilePayload,
+	user: RequestUser,
+) => {
 	const existingDoctor = await prisma.doctor.findUnique({
 		where: { userId: user.userId },
 	});
@@ -385,13 +405,13 @@ const updateDoctorProfile = async (payload: IUpdateDoctorProfilePayload, user: R
 
 	const updatedDoctor = await prisma.doctor.update({
 		where: {
-			id: existingDoctor.id
+			id: existingDoctor.id,
 		},
-		data: payload
-	})
+		data: payload,
+	});
 
-	return updatedDoctor
-}
+	return updatedDoctor;
+};
 
 const getAvailableDoctorByTodaysSchedule = async (query: IQuery) => {
 	const limit = query.limit ? Number(query.limit) : 10;
@@ -403,54 +423,58 @@ const getAvailableDoctorByTodaysSchedule = async (query: IQuery) => {
 	const now = new Date();
 	const startOfToday = startOfDay(now);
 	const startOfTomorrow = addDays(startOfToday, 1);
+	const availableScheduleWhere = {
+		isDeleted: false,
+		status: ScheduleStatus.PUBLISHED,
+		startDateTime: { gte: startOfToday, lt: startOfTomorrow, gt: now },
+		availableSlots: { gt: 0 },
+	};
 
-
-
-	const [doctors, total] = await Promise.all([
-		prisma.doctor.findMany({
-			where: {
-				isDeleted: false,
-				verificationStatus: DoctorVerificationStatus.APPROVED
-			},
-			select: {
-				id: true,
-				name: true,
-				address: true,
-				specialization: true,
-				qualifications: true,
-				experienceYears: true,
-				bio: true,
-				consultationFee: true,
-				contactNumber: true,
-				user: {
-					select: {
-						imageUrl: true,
-					},
-				},
-				schedules: {
-					where: {
-						isDeleted: false,
-						status: ScheduleStatus.PUBLISHED,
-						startDateTime: { gte: startOfToday, lt: startOfTomorrow, gt: now },
-						availableSlots: { gt: 0 },
-					},
-					orderBy: { startDateTime: "asc" },
-					select: {
-						id: true,
-						startDateTime: true,
-						endDateTime: true,
-						totalSlots: true,
-						availableSlots: true,
-						meetingLink: true,
-					},
+	const doctors = await prisma.doctor.findMany({
+		where: {
+			isDeleted: false,
+			verificationStatus: DoctorVerificationStatus.APPROVED,
+			schedules: { some: availableScheduleWhere },
+		},
+		select: {
+			id: true,
+			name: true,
+			address: true,
+			specialization: true,
+			qualifications: true,
+			experienceYears: true,
+			bio: true,
+			consultationFee: true,
+			contactNumber: true,
+			user: {
+				select: {
+					imageUrl: true,
 				},
 			},
-			take: limit,
-			skip,
-			orderBy: { [sortBy]: sortOrder },
-		}),
-		prisma.doctor.count({ where: { isDeleted: false, verificationStatus: DoctorVerificationStatus.APPROVED } }),
-	]);
+			schedules: {
+				where: availableScheduleWhere,
+				orderBy: { startDateTime: "asc" },
+				select: {
+					id: true,
+					startDateTime: true,
+					endDateTime: true,
+					totalSlots: true,
+					availableSlots: true,
+					meetingLink: true,
+				},
+			},
+		},
+		take: limit,
+		skip,
+		orderBy: { [sortBy]: sortOrder },
+	});
+	const total = await prisma.doctor.count({
+		where: {
+			isDeleted: false,
+			verificationStatus: DoctorVerificationStatus.APPROVED,
+			schedules: { some: availableScheduleWhere },
+		},
+	});
 
 	return {
 		data: doctors,
@@ -463,12 +487,15 @@ const getAllDoctorsListPublic = async (query: IQuery) => {
 	const page = query.page ? Number(query.page) : 1;
 	const skip = (page - 1) * limit;
 
-	const sortBy = query.sortBy || "createdAt"
-	const sortOrder = query.sortOrder || "desc"
+	const sortBy = query.sortBy || "createdAt";
+	const sortOrder = query.sortOrder || "desc";
 
 	const [doctors, total] = await Promise.all([
 		prisma.doctor.findMany({
-			where: { isDeleted: false, verificationStatus: DoctorVerificationStatus.APPROVED },
+			where: {
+				isDeleted: false,
+				verificationStatus: DoctorVerificationStatus.APPROVED,
+			},
 			select: {
 				id: true,
 				name: true,
@@ -488,14 +515,14 @@ const getAllDoctorsListPublic = async (query: IQuery) => {
 			take: limit,
 			skip,
 			orderBy: {
-				[sortBy]: sortOrder
-			}
+				[sortBy]: sortOrder,
+			},
 		}),
 		prisma.doctor.count({
 			where: {
 				isDeleted: false,
-				verificationStatus: DoctorVerificationStatus.APPROVED
-			}
+				verificationStatus: DoctorVerificationStatus.APPROVED,
+			},
 		}),
 	]);
 

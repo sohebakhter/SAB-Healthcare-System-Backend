@@ -54,9 +54,23 @@ export const applyAsDoctorZodSchema = z.object({
 });
 
 export const UpdateDoctorProfileZodSchema = z.object({
-	address: z.string().trim().min(5, "Address must atleast 5 characters long").optional(),
-	bio: z.string().trim().max(1000, "Bio cannot exceed 1000 characters").optional(),
-	consultationFee: z.number().min(0, "Consultation Fee can not be negetive").optional(),
-	contactNumber: z.string().trim().min(5, "Contact Number is Invalid").optional()
-})
-
+	address: z
+		.string()
+		.trim()
+		.min(5, "Address must atleast 5 characters long")
+		.optional(),
+	bio: z
+		.string()
+		.trim()
+		.max(1000, "Bio cannot exceed 1000 characters")
+		.optional(),
+	consultationFee: z
+		.number()
+		.min(0, "Consultation Fee can not be negetive")
+		.optional(),
+	contactNumber: z
+		.string()
+		.trim()
+		.min(5, "Contact Number is Invalid")
+		.optional(),
+});

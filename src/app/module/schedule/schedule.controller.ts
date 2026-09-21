@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import { ScheduleServices } from "./schedule.service";
@@ -69,7 +69,7 @@ const updateSchedule = catchAsync(async (req: Request, res: Response) => {
 	});
 });
 const publishSchedule = catchAsync(async (req: Request, res: Response) => {
-	const scheduleId = req.body.scheduleId;
+	const scheduleId = req.params.scheduleId as string;
 	const user = req.user!;
 	const result = await ScheduleServices.publishSchedule(scheduleId, user);
 

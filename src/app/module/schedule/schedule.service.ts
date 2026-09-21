@@ -6,12 +6,12 @@ import {
 	startOfDay,
 } from "date-fns";
 import { prisma } from "../../lib/prisma";
-import { RequestUser } from "../../middleware/checkAuth";
+import type { RequestUser } from "../../middleware/checkAuth";
 import { AppError } from "../../utils/appError";
 import httpsStatus from "http-status";
-import { ISchedulePayload, IUpdateSchedulePayload } from "./schedule.interface";
-import { IQuery } from "../../interfaces";
-import { ScheduleWhereInput } from "../../../../generated/prisma/models";
+import type { ISchedulePayload, IUpdateSchedulePayload } from "./schedule.interface";
+import type { IQuery } from "../../interfaces";
+import type { ScheduleWhereInput } from "../../../../generated/prisma/models";
 import { ScheduleStatus } from "../../../../generated/prisma/enums";
 
 const createSchedule = async (payload: ISchedulePayload, user: RequestUser) => {
@@ -68,8 +68,8 @@ const createSchedule = async (payload: ISchedulePayload, user: RequestUser) => {
 	}
 
 	const durationInMinutes = differenceInMinutes(
-		payload.startDateTime,
 		payload.endDateTime,
+		payload.startDateTime,
 	);
 
 	const MINUTES_ALLOCATED_PER_SLOT = 20;
@@ -365,8 +365,8 @@ const updateSchedule = async (
 	}
 
 	const durationInMinutes = differenceInMinutes(
-		payload.startDateTime,
 		payload.endDateTime,
+		payload.startDateTime,
 	);
 
 	const MINUTES_ALLOCATED_PER_SLOT = 20;
@@ -482,7 +482,7 @@ const deleteSchedule = async (scheduleId: string, user: RequestUser) => {
 };
 
 const getTodaysSchedules = async (query: IQuery) => {
-	if (query.doctorId) {
+	if (!query.doctorId) {
 		throw new AppError(httpsStatus.NOT_FOUND, "Doctor Query not found");
 	}
 	const doctor = await prisma.doctor.findUnique({

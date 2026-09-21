@@ -28,7 +28,7 @@ router.get(
 );
 router.get(
 	"/todays-schedule",
-	auth(Role.PATIENT),
+	// auth(Role.PATIENT),
 	ScheduleController.getTodaysSchedules,
 );
 router.patch(

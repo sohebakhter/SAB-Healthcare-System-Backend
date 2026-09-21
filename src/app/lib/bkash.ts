@@ -91,6 +91,6 @@ export const getBkashIdToken = async () => {
 
 		return data.id_token;
 	} catch (error: any) {
-			 throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, error.message);
+		throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, error.message);
 	}
 };

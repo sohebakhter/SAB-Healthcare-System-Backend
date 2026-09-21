@@ -54,18 +54,24 @@ const cancelAppointment = catchAsync(async (req: Request, res: Response) => {
 		data: result,
 	});
 });
-const updateAppointmentStatus = catchAsync(async (req: Request, res: Response) => {
-	const appointmentId = req.body.appointmentId;
-	const payload = req.body;
-	const user = req.user!;
-	const result = await AppointmentServices.updateAppointmentStatus(appointmentId, payload, user);
-	sendResponse(res, {
-		success: true,
-		statusCode: httpStatus.OK,
-		message: "Appointment updated Successfully",
-		data: result,
-	});
-});
+const updateAppointmentStatus = catchAsync(
+	async (req: Request, res: Response) => {
+		const appointmentId = req.body.appointmentId;
+		const payload = req.body;
+		const user = req.user!;
+		const result = await AppointmentServices.updateAppointmentStatus(
+			appointmentId,
+			payload,
+			user,
+		);
+		sendResponse(res, {
+			success: true,
+			statusCode: httpStatus.OK,
+			message: "Appointment updated Successfully",
+			data: result,
+		});
+	},
+);
 const getMyAppointments = catchAsync(async (req: Request, res: Response) => {
 	const query = req.query;
 	const user = req.user!;
@@ -77,17 +83,19 @@ const getMyAppointments = catchAsync(async (req: Request, res: Response) => {
 		data: result,
 	});
 });
-const getDoctorAppointments = catchAsync(async (req: Request, res: Response) => {
-	const query = req.query;
-	const user = req.user!;
-	const result = await AppointmentServices.getDoctorAppointments(query, user);
-	sendResponse(res, {
-		success: true,
-		statusCode: httpStatus.OK,
-		message: "Doctor Appointment Successfully",
-		data: result,
-	});
-});
+const getDoctorAppointments = catchAsync(
+	async (req: Request, res: Response) => {
+		const query = req.query;
+		const user = req.user!;
+		const result = await AppointmentServices.getDoctorAppointments(query, user);
+		sendResponse(res, {
+			success: true,
+			statusCode: httpStatus.OK,
+			message: "Doctor Appointment Successfully",
+			data: result,
+		});
+	},
+);
 const getAllAppointments = catchAsync(async (req: Request, res: Response) => {
 	const query = req.query;
 	const result = await AppointmentServices.getAllAppointments(query);
@@ -101,7 +109,10 @@ const getAllAppointments = catchAsync(async (req: Request, res: Response) => {
 const getSingleAppointment = catchAsync(async (req: Request, res: Response) => {
 	const appointmentId = req.body.appointmentId;
 	const user = req.user!;
-	const result = await AppointmentServices.getSingleAppointment(appointmentId, user);
+	const result = await AppointmentServices.getSingleAppointment(
+		appointmentId,
+		user,
+	);
 	sendResponse(res, {
 		success: true,
 		statusCode: httpStatus.OK,
@@ -119,5 +130,5 @@ export const AppointmentController = {
 	getMyAppointments,
 	getDoctorAppointments,
 	getAllAppointments,
-	getSingleAppointment
+	getSingleAppointment,
 };

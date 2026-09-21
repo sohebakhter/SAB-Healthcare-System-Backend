@@ -26,7 +26,8 @@ export const seedSuperAdmin = async () => {
 		const password = config.super_admin_password;
 
 		if (!name || !email || !password) {
-					 throw new AppError(httpStatus.INTERNAL_SERVER_ERROR,
+			throw new AppError(
+				httpStatus.INTERNAL_SERVER_ERROR,
 				"Super Admin Name, Email, Password missing in Env File!!",
 			);
 		}
@@ -77,7 +78,8 @@ export const seedTesterAdmin = async () => {
 		const password = config.tester_admin_password;
 
 		if (!name || !email || !password) {
-					 throw new AppError(httpStatus.INTERNAL_SERVER_ERROR,
+			throw new AppError(
+				httpStatus.INTERNAL_SERVER_ERROR,
 				"Tester Admin Name, Email, Password missing in Env File!!",
 			);
 		}
@@ -129,7 +131,8 @@ export const seedTesterDoctor = async () => {
 		const password = config.tester_doctor_password;
 
 		if (!name || !email || !password) {
-					throw new AppError(httpStatus.INTERNAL_SERVER_ERROR,
+			throw new AppError(
+				httpStatus.INTERNAL_SERVER_ERROR,
 				"Tester Doctor Name, Email, Password missing in Env File!!",
 			);
 		}

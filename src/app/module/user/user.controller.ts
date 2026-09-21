@@ -8,7 +8,10 @@ import { UserServices } from "./user.service";
 const uploadProfileImage = catchAsync(async (req: Request, res: Response) => {
 	// console.log(req.file, "profile image");
 	if (!req.file) {
-				throw new AppError(httpStatus.BAD_REQUEST, "Profile Picture is not Uploaded");
+		throw new AppError(
+			httpStatus.BAD_REQUEST,
+			"Profile Picture is not Uploaded",
+		);
 	}
 	const userId = req.user?.userId;
 	const result = await UserServices.uploadProfileImage(

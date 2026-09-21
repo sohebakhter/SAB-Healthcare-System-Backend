@@ -3,7 +3,10 @@ import { AppointmentController } from "./appointment.controller";
 import { auth } from "../../middleware/checkAuth";
 import { Role } from "../../../../generated/prisma/enums";
 import { validateRequest } from "../../middleware/validateRequest";
-import { BookAppointmentZodSchema, UpdateAppointmentStatusZodSchema } from "./appointment.validation";
+import {
+	BookAppointmentZodSchema,
+	UpdateAppointmentStatusZodSchema,
+} from "./appointment.validation";
 
 const router = Router();
 

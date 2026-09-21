@@ -27,7 +27,7 @@ router.post(
 	auth(Role.ADMIN, Role.SUPER_ADMIN),
 	doctorController.approveDoctor,
 );
-router.post(
+router.get(
 	"/all-doctors",
 	auth(Role.ADMIN, Role.SUPER_ADMIN),
 	doctorController.getAllDoctors,
