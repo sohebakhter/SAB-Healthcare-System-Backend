@@ -81,7 +81,7 @@ const publishSchedule = catchAsync(async (req: Request, res: Response) => {
 	});
 });
 const deleteSchedule = catchAsync(async (req: Request, res: Response) => {
-	const scheduleId = req.body.scheduleId;
+	const scheduleId = req.params.scheduleId as string;
 	const user = req.user!;
 	const result = await ScheduleServices.deleteSchedule(scheduleId, user);
 
