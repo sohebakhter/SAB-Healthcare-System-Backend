@@ -12,7 +12,7 @@ const bookAppointment = catchAsync(async (req: Request, res: Response) => {
 	sendResponse(res, {
 		success: true,
 		statusCode: httpStatus.OK,
-		message: "Bkash Payment Intent Created Successfully",
+		message: "Appointment Payment Initiated Successfully",
 		data: result,
 	});
 });

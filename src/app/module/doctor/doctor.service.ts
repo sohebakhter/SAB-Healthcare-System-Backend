@@ -456,7 +456,8 @@ const getAvailableDoctorByTodaysSchedule = async (query: IQuery) => {
 	const availableScheduleWhere = {
 		isDeleted: false,
 		status: ScheduleStatus.PUBLISHED,
-		startDateTime: { gte: startOfToday, lt: startOfTomorrow, gt: now },
+		startDateTime: { gte: startOfToday, lt: startOfTomorrow },
+		endDateTime: { gt: now },
 		availableSlots: { gt: 0 },
 	};
 

@@ -9,7 +9,10 @@ import { prisma } from "../../lib/prisma";
 import type { RequestUser } from "../../middleware/checkAuth";
 import { AppError } from "../../utils/appError";
 import httpsStatus from "http-status";
-import type { ISchedulePayload, IUpdateSchedulePayload } from "./schedule.interface";
+import type {
+	ISchedulePayload,
+	IUpdateSchedulePayload,
+} from "./schedule.interface";
 import type { IQuery } from "../../interfaces";
 import type { ScheduleWhereInput } from "../../../../generated/prisma/models";
 import { ScheduleStatus } from "../../../../generated/prisma/enums";
@@ -521,8 +524,8 @@ const getTodaysSchedules = async (query: IQuery) => {
 			startDateTime: {
 				gte: startOfToday,
 				lt: startOfTomorrow,
-				gt: now,
 			},
+			endDateTime: { gt: now },
 		},
 		{
 			availableSlots: { gt: 0 },
